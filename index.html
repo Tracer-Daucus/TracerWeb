@@ -284,7 +284,8 @@
         </h1>
 
         <div class="notice">
-            <strong>⚠️ Early prototype interface:</strong> Connect through Metamask to see your TRCR holdings.
+            <strong>⚠️ Early prototype:</strong> Connect through Metamask to see your TRCR holdings. Everything tested
+            to work.
         </div>
 
         <div id="status" class="status disconnected">
@@ -304,6 +305,12 @@
             </div>
 
             <div class="info-card">
+                <h3>Total Supply</h3>
+                <div id="totalSupply">Loading...</div>
+                <div id="symbol"></div>
+            </div>
+
+            <div class="info-card">
                 <h3>Your Address</h3>
                 <div class="contract-info" id="userAddress">Not Connected</div>
             </div>
@@ -315,13 +322,7 @@
             </div>
 
             <div class="info-card">
-                <h3>Total Supply</h3>
-                <div id="totalSupply">Loading...</div>
-                <div id="symbol"></div>
-            </div>
-
-            <div class="info-card">
-                <h3>Your Nonce</h3>
+                <h3>Delegation Counter</h3>
                 <div id="nonce"></div>
             </div>
 
@@ -330,6 +331,12 @@
                 <div id="votingPower">Loading...</div>
                 <div id="symbol"></div>
             </div>
+
+            <div class="info-card">
+                <h3>Voting Power Holder</h3>
+                <div id="delegates">Loading...</div>
+            </div>
+
         </div>
 
         <div class="actions">
@@ -586,14 +593,15 @@
 
             try {
                 // Get token info
-                const [balance, totalSupply, nonce, name, symbol, decimals, votingPower] = await Promise.all([
+                const [balance, totalSupply, nonce, name, symbol, decimals, votingPower, delegates] = await Promise.all([
                     contract.balanceOf(userAccount),
                     contract.totalSupply(),
                     contract.nonces(userAccount),
                     contract.name(),
                     contract.symbol(),
                     contract.decimals(),
-                    contract.getVotes(userAccount)
+                    contract.getVotes(userAccount),
+                    contract.delegates(userAccount)
                 ]);
 
                 // Format and display
@@ -605,6 +613,24 @@
                 document.getElementById('totalSupply').textContent = `${parseFloat(formattedTotalSupply).toLocaleString()} ${symbol}`;
                 document.getElementById('nonce').textContent = nonce.toString();
                 document.getElementById('votingPower').textContent = `${parseFloat(formattedVotingPower).toLocaleString()} ${symbol}`;
+
+                const el = document.getElementById("delegates");
+
+                let displayDelegate;
+                if (delegates === ethers.ZeroAddress) {
+                    displayDelegate = "No delegate set";
+                } else if (delegates.toLowerCase() === userAccount.toLowerCase()) {
+                    displayDelegate = "Self-delegated";
+                } else {
+                    displayDelegate = delegates;
+                }
+                el.textContent = displayDelegate;
+                // Toggle the class only if it's an address
+                if (ethers.isAddress(displayDelegate)) {
+                    el.classList.add("contract-info");
+                } else {
+                    el.classList.remove("contract-info");
+                }
 
                 showMessage('Data refreshed successfully!', 'success');
             } catch (error) {
