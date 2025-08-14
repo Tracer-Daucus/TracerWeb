@@ -86,13 +86,13 @@
         }
 
         .status.connected {
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: linear-gradient(135deg, #7FB800, #608B00);
             color: white;
             box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
         }
 
         .status.disconnected {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
+            background: linear-gradient(135deg, #f6511d, #BD3E16);
             color: white;
             box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
         }
@@ -295,8 +295,7 @@
         <div class="info-grid">
             <div class="info-card">
                 <h3>Network</h3>
-                <div id="network">Arbitrum Sepolia</div>
-                <div class="contract-info">Chain ID: 421614</div>
+                <div id="network">Auto-detect from MetaMask</div>
             </div>
 
             <div class="info-card">
@@ -427,11 +426,42 @@
         <div id="messages"></div>
     </div>
 
-    <script>
-        // Contract configuration
-        const CONTRACT_ADDRESS = '0x23fd096B2875A6dEccae8C688f44fAf0001E3Eef';
-        const ARBITRUM_SEPOLIA_CHAIN_ID = '0x66eee'; // 421614 in hex
+    <footer
+        style="text-align: center; padding: 30px 20px; margin-top: 40px; color: var(--text-light); font-size: 14px; font-family: 'Open Sans', sans-serif;">
+        © 2025 Tracer. All rights reserved. Use at your own risk.
+    </footer>
 
+    <script>
+        // Contract configuration - both networks
+        const CONTRACTS = {
+            421614: { // Arbitrum Sepolia
+                address: '0x23fd096B2875A6dEccae8C688f44fAf0001E3Eef',
+                name: 'Arbitrum Sepolia',
+                chainIdHex: '0x66eee',
+                rpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
+                blockExplorer: 'https://sepolia.arbiscan.io/',
+                nativeCurrency: {
+                    name: 'Arbitrum Sepolia Ether',
+                    symbol: 'ETH',
+                    decimals: 18
+                }
+            },
+            42161: { // Arbitrum One (Mainnet)
+                address: '0x0000000000000000000000000000000000000000', // Replace with actual mainnet address
+                name: 'Arbitrum One',
+                chainIdHex: '0xa4b1',
+                rpcUrl: 'https://arb1.arbitrum.io/rpc',
+                blockExplorer: 'https://arbiscan.io/',
+                nativeCurrency: {
+                    name: 'Ether',
+                    symbol: 'ETH',
+                    decimals: 18
+                }
+            }
+        };
+
+        let currentNetwork = null;
+        let CONTRACT_ADDRESS = null;
         // ERC20 ABI with ERC20Votes and ERC20Permit functions
         const TOKEN_ABI = [
             // Standard ERC20
@@ -469,6 +499,45 @@
 
         let provider, signer, contract, userAccount;
 
+        function detectNetwork(chainId) {
+            const networkId = parseInt(chainId);
+            currentNetwork = CONTRACTS[networkId];
+
+            if (currentNetwork) {
+                CONTRACT_ADDRESS = currentNetwork.address;
+                document.getElementById('network').textContent = currentNetwork.name;
+                document.getElementById('contractAddress').textContent = CONTRACT_ADDRESS;
+                return true;
+            } else {
+                currentNetwork = null;
+                CONTRACT_ADDRESS = null;
+                return false;
+            }
+        }
+
+        function updateNetworkUI() {
+            if (currentNetwork) {
+                document.getElementById('network').textContent = currentNetwork.name;
+                document.getElementById('contractAddress').textContent = CONTRACT_ADDRESS;
+
+                // Show/hide mainnet warning
+                const isMainnet = currentNetwork.name === 'Arbitrum One';
+                let warning = document.getElementById('mainnetWarning');
+
+                if (isMainnet && CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') {
+                    if (!warning) {
+                        warning = document.createElement('div');
+                        warning.id = 'mainnetWarning';
+                        warning.className = 'error';
+                        warning.innerHTML = '<strong>⚠️ Mainnet Warning:</strong> Please update the mainnet contract address in the code before using on Arbitrum One.';
+                        document.querySelector('.container').insertBefore(warning, document.getElementById('status'));
+                    }
+                } else if (warning) {
+                    warning.remove();
+                }
+            }
+        }
+
         async function connectWallet() {
             try {
                 if (typeof window.ethereum === 'undefined') {
@@ -489,40 +558,38 @@
                     throw new Error('No accounts found. Please unlock MetaMask.');
                 }
 
-                // Initialize ethers provider with explicit configuration
-                provider = new ethers.BrowserProvider(window.ethereum, {
-                    name: 'arbitrum-sepolia',
-                    chainId: 421614
-                });
+                // Initialize ethers provider
+                provider = new ethers.BrowserProvider(window.ethereum);
 
                 // Wait for provider to be ready
                 await provider._detectNetwork();
 
+                // Get current network
+                const network = await provider.getNetwork();
+                const isSupported = detectNetwork(network.chainId.toString());
+
+                if (!isSupported) {
+                    showMessage(`Unsupported network. Please switch to Arbitrum One or Arbitrum Sepolia.`, 'error');
+                    updateNetworkUI();
+                    return;
+                }
+
                 signer = await provider.getSigner();
                 userAccount = await signer.getAddress();
 
-                // Initialize contract
+                // Initialize contract with current network
                 contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
 
-                // Check if we're on Arbitrum Sepolia
-                const network = await provider.getNetwork();
-                if (network.chainId !== 421614n) {
-                    await switchToArbitrumSepolia();
-                    // Reinitialize after network switch
-                    provider = new ethers.BrowserProvider(window.ethereum);
-                    signer = await provider.getSigner();
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, TOKEN_ABI, signer);
-                }
                 document.getElementById('checkVotingPowerBtn').disabled = false;
                 document.getElementById('delegateBtn').disabled = false;
                 document.getElementById('signAndSubmitBtn').disabled = false;
-
                 document.getElementById('deadlineStr').value = defaultPermitDeadline();
 
                 updateUI();
+                updateNetworkUI();
                 await refreshData();
 
-                showMessage('Successfully connected to MetaMask!', 'success');
+                showMessage(`Successfully connected to ${currentNetwork.name}!`, 'success');
 
             } catch (error) {
                 console.error('Connection error:', error);
@@ -540,38 +607,6 @@
             }
         }
 
-        async function switchToArbitrumSepolia() {
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: ARBITRUM_SEPOLIA_CHAIN_ID }],
-                });
-            } catch (switchError) {
-                // This error code indicates that the chain has not been added to MetaMask
-                if (switchError.code === 4902) {
-                    try {
-                        await window.ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [{
-                                chainId: ARBITRUM_SEPOLIA_CHAIN_ID,
-                                chainName: 'Arbitrum Sepolia',
-                                rpcUrls: ['https://sepolia-rollup.arbitrum.io/rpc'],
-                                nativeCurrency: {
-                                    name: 'Arbitrum Sepolia Ether',
-                                    symbol: 'ETH',
-                                    decimals: 18
-                                },
-                                blockExplorerUrls: ['https://sepolia.arbiscan.io/']
-                            }]
-                        });
-                    } catch (addError) {
-                        throw new Error('Failed to add Arbitrum Sepolia network');
-                    }
-                } else {
-                    throw new Error('Failed to switch to Arbitrum Sepolia network');
-                }
-            }
-        }
 
         function updateUI() {
             if (userAccount) {
@@ -789,7 +824,6 @@
             }
         }
 
-
         async function signAndSubmitPermit() {
             const spender = document.getElementById('permitSpenderAddress').value.trim();
             const amountStr = document.getElementById('permitAmount').value.trim();
@@ -982,7 +1016,14 @@
                 });
 
                 window.ethereum.on('chainChanged', function (chainId) {
-                    setTimeout(() => location.reload(), 100);
+                    // Detect new network and reconnect
+                    setTimeout(async () => {
+                        try {
+                            await connectWallet();
+                        } catch (error) {
+                            location.reload();
+                        }
+                    }, 100);
                 });
             } catch (error) {
                 console.warn('Event listener setup failed:', error);
