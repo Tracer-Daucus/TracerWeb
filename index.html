@@ -65,7 +65,8 @@
         .logo {
             width: 60px;
             height: 60px;
-            border-radius: 50%;
+            /*                   border-radius: 50%;
+ */
             box-shadow: 0 8px 16px var(--shadow);
         }
 
@@ -279,13 +280,13 @@
 <body>
     <div class="container">
         <h1>
-            <img src="tracerlogo.png" alt="Tracer Logo" class="logo">
-            Tracer Token Interface
+            <img src="tracericon.svg" alt="Tracer Logo" class="logo">
+            Tracer Token Dashboard
         </h1>
 
         <div class="notice">
-            <strong>⚠️ Early prototype:</strong> Connect through Metamask to see your TRCR holdings. Everything tested
-            to work.
+            <strong>⚠️ Early prototype:</strong> Connect your wallet with MetaMask (works with Ledger Nano) to view your
+            TRCR tokens. Contact support if you experience any problems 😂.
         </div>
 
         <div id="status" class="status disconnected">
@@ -341,7 +342,7 @@
         <div class="actions">
             <button id="connectBtn" onclick="connectWallet()">Connect MetaMask</button>
             <button id="refreshBtn" onclick="refreshData()" disabled>Refresh Data</button>
-            <button onclick="addToMetaMask()" disabled id="addTokenBtn">Add Token to MetaMask</button>
+            <button onclick="addToMetaMask()" disabled id="addTokenBtn">Add Tracer to MetaMask</button>
         </div>
 
         <div class="transaction-section">
@@ -947,6 +948,7 @@
                     contract.symbol(),
                     contract.decimals()
                 ]);
+                const tokenImageURL = 'https://tracer.endglobalwarming.net/tracericon.svg';
 
                 await window.ethereum.request({
                     method: 'wallet_watchAsset',
@@ -956,6 +958,7 @@
                             address: contractAddress,
                             symbol: symbol.toString(),
                             decimals: Number(decimals),
+                            image: tokenImageURL,
                         },
                     },
                 });
