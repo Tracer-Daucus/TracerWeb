@@ -77,6 +77,16 @@
             color: var(--primary-blue);
         }
 
+        footer {
+            font-family: 'Open Sans', sans-serif;
+            text-align: center;
+            padding: 30px 20px;
+            margin-top: 40px;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+
         .status {
             padding: 16px 24px;
             border-radius: 50px;
@@ -218,6 +228,7 @@
             border-radius: 12px;
             word-break: break-all;
             border: 1px solid var(--bg-medium);
+            overflow-wrap: break-word;
         }
 
         .error {
@@ -228,6 +239,8 @@
             border-radius: 20px;
             margin: 20px 0;
             font-weight: 500;
+            overflow-wrap: break-word;
+
         }
 
         .success {
@@ -242,7 +255,6 @@
             white-space: normal;
             overflow-wrap: break-word;
             word-break: break-word;
-
         }
 
         .notice {
@@ -306,7 +318,8 @@
 
             <div class="info-card">
                 <h3>Contract Address</h3>
-                <div class="contract-info" id="contractAddress">0x23fd096B2875A6dEccae8C688f44fAf0001E3Eef</div>
+                <div class="contract-info" id="contractAddress">
+                    0x23fd096B2875A6dEccae8C688f44fAf0001E3Eef</div>
             </div>
 
             <div class="info-card">
@@ -434,8 +447,7 @@
         <div id="messages"></div>
     </div>
 
-    <footer
-        style="text-align: center; padding: 30px 20px; margin-top: 40px; color: var(--text-light); font-size: 14px; font-family: 'Open Sans', sans-serif;">
+    <footer>
         © 2025 Tracer. All rights reserved. Use at your own risk.
     </footer>
 
@@ -514,7 +526,7 @@
             if (currentNetwork) {
                 contractAddress = currentNetwork.address;
                 document.getElementById('network').textContent = currentNetwork.name;
-                document.getElementById('contractAddress').textContent = currentNetwork.address;
+                document.getElementById('contractAddress').innerHTML = explorerLink('address', currentNetwork.address);
                 return true;
             } else {
                 currentNetwork = null;
@@ -526,7 +538,7 @@
         function updateNetworkUI() {
             if (currentNetwork) {
                 document.getElementById('network').textContent = currentNetwork.name;
-                document.getElementById('contractAddress').textContent = currentNetwork.address;
+                document.getElementById('contractAddress').innerHTML = explorerLink('address', currentNetwork.address);
 
                 // Show/hide mainnet warning
                 const isMainnet = currentNetwork.name === 'Arbitrum One';
@@ -552,7 +564,7 @@
                     showMessage('MetaMask is not installed!', 'error');
                     return;
                 }
-                // Add a small delay to ensure MetaMask is fully loaded
+                // Ensure MetaMask is fully loaded
                 await new Promise(resolve => {
                     if (document.readyState === 'complete') {
                         resolve();
@@ -626,7 +638,7 @@
             if (userAccount) {
                 document.getElementById('status').textContent = 'Connected to MetaMask';
                 document.getElementById('status').className = 'status connected';
-                document.getElementById('userAddress').textContent = userAccount;
+                document.getElementById('userAddress').innerHTML = explorerLink('address', userAccount);
 
                 // Enable buttons
                 const buttons = ['refreshBtn', 'transferBtn', 'approveBtn', 'checkAllowanceBtn', 'addTokenBtn'];
@@ -688,6 +700,39 @@
             }
         }
 
+        /**
+ * Creates an HTML link to a blockchain explorer for a transaction, address, or contract.
+ * @param {string} type - "tx" for transaction, "address" for wallet/contract.
+ * @param {string} value - Transaction hash or address.
+ * @param {number|string} chainId - The current chain ID.
+ * @param {string} [label] - Optional label for the link text (defaults to value).
+ * @returns {string} HTML string with link or plain text fallback.
+ */
+        function explorerLink(type, value, label) {
+            const explorer = currentNetwork.blockExplorer;
+            const text = label || value;
+
+            if (!explorer || !value) {
+                return `<code>${text}</code>`;
+            }
+
+            // Normalize type to path
+            let path = '';
+            if (type === 'tx') {
+                path = `tx/${value}`;
+                return `<code><a href="${explorer}${path}" target="_blank" rel="noopener">${text}</a></code>`;
+
+            } else if (type === 'address') {
+                path = `address/${value}`;
+                return `<code><a style="cursor: pointer;" href="${explorer}${path}" target="_blank" rel="noopener">${text}</a></code>`;
+
+            } else {
+                console.warn('Unknown explorer link type:', type);
+                return `<code>${text}</code>`;
+            }
+
+        }
+
         async function transferTokens() {
             const to = document.getElementById('transferTo').value;
             const amount = document.getElementById('transferAmount').value;
@@ -713,11 +758,8 @@
                 const explorer = currentNetwork.blockExplorer;
                 document.getElementById('transferResult').innerHTML = `
                             <div class="success">
-                                Transfer successul to <code>${to}</code><br/>
-                                ${explorer
-                        ? `TX Hash: <code><a href="${explorer}tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a></code>`
-                        : `TX Hash: ${tx.hash}`
-                    }
+                                Transfer successul to ${explorerLink('address', to)}<br/>
+                                TX Hash: ${explorerLink('tx', tx.hash)}
                             </div>
                        `;
 
@@ -749,8 +791,7 @@
 
                 showMessage('Transaction submitted! Waiting for confirmation...', 'success');
                 await tx.wait();
-
-                showMessage(`Approval successful! Tx: ${tx.hash}`, 'success');
+                showMessage(`Approval successful! Tx: ${explorerLink('tx', tx.hash)}`, 'success');
 
                 // Clear inputs
                 document.getElementById('approveSpender').value = '';
@@ -802,11 +843,11 @@
 
                 const tx = await contract.delegate(delegatee);
                 await tx.wait();
-
                 document.getElementById('delegateResult').innerHTML = `
             <div class="success">
-                Successfully delegated to <code>${delegatee}</code><br />
-                TX Hash: <code><a href="https://etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a></code>
+                Successfully delegated to ${explorerLink('address', delegatee)}<br>
+                Tx Hash: ${explorerLink('tx', tx.hash)}
+
             </div>
         `;
                 showMessage('Delegation successful!', 'success');
@@ -937,15 +978,10 @@
                 await refreshData();
 
                 await tx.wait();
-
-                const explorer = currentNetwork.blockExplorer;
                 document.getElementById('signAndSubmitResult').innerHTML = `
                             <div class="success">
-                                Permit submitted successfully for <code>${spender}</code><br/>
-                                ${explorer
-                        ? `TX Hash: <a href="${explorer}tx/${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`
-                        : `TX Hash: ${tx.hash}`
-                    }
+                                Permit submitted successfully for ${explorerLink('address', spender)}<br/>
+                                Tx Hash: ${explorerLink('tx', tx.hash)}
                             </div>
                        `;
                 showMessage('Permit successful! Allowance has been set via signature.', 'success');
