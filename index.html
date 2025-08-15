@@ -238,6 +238,11 @@
             border-radius: 20px;
             margin: 20px 0;
             font-weight: 500;
+
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: break-word;
+
         }
 
         .notice {
@@ -356,6 +361,8 @@
                 <input type="number" id="transferAmount" placeholder="0.0" step="0.000000000000000001" />
             </div>
             <button onclick="transferTokens()" disabled id="transferBtn">Transfer</button>
+            <div id="transferResult"></div>
+
         </div>
 
         <div class="transaction-section">
@@ -697,6 +704,17 @@
                 showMessage(`Transfer successful! Tx: ${tx.hash}`, 'success');
                 await refreshData();
 
+                const explorer = currentNetwork.blockExplorer;
+                document.getElementById('transferResult').innerHTML = `
+                            <div class="success">
+                                Transfer successul to <code>${to}</code><br/>
+                                ${explorer
+                        ? `TX Hash: <code><a href="${explorer}${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a></code>`
+                        : `TX Hash: ${tx.hash}`
+                    }
+                            </div>
+                       `;
+
                 // Clear inputs
                 document.getElementById('transferTo').value = '';
                 document.getElementById('transferAmount').value = '';
@@ -782,7 +800,7 @@
                 document.getElementById('delegateResult').innerHTML = `
             <div class="success">
                 Successfully delegated to <code>${delegatee}</code><br />
-                TX Hash: <a href="https://etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a>
+                TX Hash: <code><a href="https://etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a></code>
             </div>
         `;
                 showMessage('Delegation successful!', 'success');
@@ -908,35 +926,26 @@
 
                 // Submit permit on-chain
                 const tx = await contract.permit(userAccount, spender, value, deadline, v, r, s);
+                showMessage('Transaction submitted! Waiting for confirmation...', 'success');
+
+                await refreshData();
+
                 await tx.wait();
 
-                // Optional: build an explorer link (main chains only)
-                const chainId = Number(network.chainId);
-                const explorerByChain = {
-                    1: 'https://etherscan.io/tx/',
-                    5: 'https://goerli.etherscan.io/tx/',
-                    11155111: 'https://sepolia.etherscan.io/tx/',
-                    137: 'https://polygonscan.com/tx/',
-                    10: 'https://optimistic.etherscan.io/tx/',
-                    8453: 'https://basescan.org/tx/',
-                    42161: 'https://arbiscan.io/tx/',
-                    ARBITRUM_SEPOLIA_CHAIN_ID: 'https://sepolia.arbiscan.io/'
-                };
-                const explorer = explorerByChain[chainId];
-
+                const explorer = currentNetwork.blockExplorer;
                 document.getElementById('signAndSubmitResult').innerHTML = `
-            <div class="success">
-                Permit submitted successfully for <code>${spender}</code><br/>
-                ${explorer
+                            <div class="success">
+                                Permit submitted successfully for <code>${spender}</code><br/>
+                                ${explorer
                         ? `TX Hash: <a href="${explorer}${tx.hash}" target="_blank" rel="noopener">${tx.hash}</a>`
                         : `TX Hash: ${tx.hash}`
                     }
-            </div>
-        `;
+                            </div>
+                       `;
                 showMessage('Permit successful! Allowance has been set via signature.', 'success');
             } catch (error) {
                 console.error('Permit error:', error);
-                showMessage(`Permit failed: ${error.message}`, 'error');
+                showMessage(`Permit failed: ${error.message} `, 'error');
             } finally {
                 document.getElementById('signAndSubmitBtn').disabled = false;
             }
@@ -966,7 +975,7 @@
                 showMessage('Token added to MetaMask!', 'success');
             } catch (error) {
                 console.error('Add token error:', error);
-                showMessage(`Failed to add token: ${error.message}`, 'error');
+                showMessage(`Failed to add token: ${error.message} `, 'error');
             }
         }
 
@@ -1000,7 +1009,7 @@
             const dd = pad(dt.getDate());
             const hh = pad(dt.getHours());
             const mi = pad(dt.getMinutes());
-            return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+            return `${yyyy} -${mm} -${dd}T${hh}:${mi}`;
         }
 
 
