@@ -553,7 +553,13 @@
                     return;
                 }
                 // Add a small delay to ensure MetaMask is fully loaded
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => {
+                    if (document.readyState === 'complete') {
+                        resolve();
+                    } else {
+                        window.addEventListener('load', resolve, { once: true });
+                    }
+                });
 
                 // Request account access with additional options for file:// protocol
                 const accounts = await window.ethereum.request({
@@ -979,6 +985,21 @@
             }
         }
 
+        function safeDelay(callback, ms = 0) {
+            return new Promise(resolve => {
+                const startTime = performance.now();
+                function checkTime() {
+                    if (performance.now() - startTime >= ms) {
+                        callback();
+                        resolve();
+                    } else {
+                        requestAnimationFrame(checkTime);
+                    }
+                }
+                requestAnimationFrame(checkTime);
+            });
+        }
+
         function showMessage(message, type) {
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
@@ -987,7 +1008,7 @@
             messagesDiv.appendChild(messageDiv);
 
             // Remove message after 5 seconds
-            setTimeout(() => {
+            safeDelay(() => {
                 if (messageDiv.parentNode) {
                     messageDiv.parentNode.removeChild(messageDiv);
                 }
@@ -1021,19 +1042,19 @@
                     if (accounts.length === 0) {
                         location.reload();
                     } else {
-                        setTimeout(() => connectWallet(), 100);
+                        requestAnimationFrame(() => connectWallet());
                     }
                 });
 
                 window.ethereum.on('chainChanged', function (chainId) {
                     // Detect new network and reconnect
-                    setTimeout(async () => {
+                    requestAnimationFrame(async () => {
                         try {
                             await connectWallet();
                         } catch (error) {
                             location.reload();
                         }
-                    }, 100);
+                    });
                 });
             } catch (error) {
                 console.warn('Event listener setup failed:', error);
@@ -1042,16 +1063,21 @@
 
         // Auto-connect if previously connected
         window.addEventListener('load', async function () {
-            // Add delay to ensure page is fully loaded
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => {
+                if (document.readyState === 'complete') {
+                    resolve();
+                } else {
+                    window.addEventListener('load', resolve, { once: true });
+                }
+            });
 
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     // Check if MetaMask is unlocked and has connected accounts
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                     if (accounts.length > 0) {
-                        // Add another small delay before connecting
-                        setTimeout(() => connectWallet(), 200);
+                        // Use requestAnimationFrame for immediate but async execution
+                        requestAnimationFrame(() => connectWallet());
                     }
                 } catch (error) {
                     console.warn('Auto-connect check failed:', error);
