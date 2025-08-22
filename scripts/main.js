@@ -210,13 +210,13 @@ function updateUI() {
     // Enable buttons
     const buttons = [
       "refreshBtn",
+      "addTokenBtn",
       "transferTokensBtn",
       "approveTokensBtn",
       "checkAllowanceBtn",
       "signAndSubmitPermitBtn",
       "checkVotingPowerBtn",
       "delegateVotingPowerBtn",
-      "addTokenBtn",
     ];
     buttons.forEach((id) => (document.getElementById(id).disabled = false));
 
@@ -770,15 +770,14 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("addTokenBtn")
     ?.addEventListener("click", addToMetaMask);
   document
-    .getElementById("transferBtn")
+    .getElementById("transferTokensBtn")
     ?.addEventListener("click", transferTokens);
   document
-    .getElementById("approveBtn")
+    .getElementById("approveTokensBtn")
     ?.addEventListener("click", approveTokens);
   document
     .getElementById("checkAllowanceBtn")
     ?.addEventListener("click", checkAllowance);
-
   document
     .getElementById("signAndSubmitPermitBtn")
     ?.addEventListener("click", signAndSubmitPermit);
@@ -786,6 +785,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("delegateVotingPowerBtn")
     ?.addEventListener("click", delegateVotingPower);
   document
-    .getElementById("checkAllowanceBtn")
-    ?.addEventListener("click", checkAllowance);
+    .getElementById("checkVotingPowerBtn")
+    ?.addEventListener("click", checkVotingPower);
 });
