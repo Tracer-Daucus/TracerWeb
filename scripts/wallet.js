@@ -31,6 +31,7 @@ let userAccount;
 export function getUserAccount() {
   return userAccount;
 }
+
 export function detectNetwork(chainId) {
   const networkId = parseInt(chainId);
   currentNetwork = CONTRACTS[networkId];

@@ -2,7 +2,7 @@
 export const CONTRACTS = {
   421614: {
     // Arbitrum Sepolia
-    address: "0x23fd096B2875A6dEccae8C688f44fAf0001E3Eef",
+    address: "0x5B4f2b9a1D39c62491056e9C97bC873997FEe6c8",
     name: "Arbitrum Sepolia",
     chainIdHex: "0x66eee",
     rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
