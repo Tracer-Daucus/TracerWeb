@@ -16,27 +16,33 @@ import {
   signAndSubmitPermit,
   circulationAt,
   transferOwnership,
+  releaseTokens,
 } from "./operations.js";
 
-export function getVestingAddress() {
-  return vestingAddress;
+// Global app state to avoid circular imports
+window.appState = {
+  isVestingMode: false,
+};
+
+// Check URL parameters and set mode
+function checkMode() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const vestingAddress = urlParams.get("vesting");
+
+  if (vestingAddress && ethers.isAddress(vestingAddress)) {
+    window.appState.isVestingMode = true;
+    document.body.setAttribute("data-mode", "vesting");
+    // Store vesting address for use by other modules
+    window.vestingAddress = vestingAddress;
+  } else {
+    window.appState.isVestingMode = false;
+    document.body.setAttribute("data-mode", "default");
+  }
+
+  return window.appState.isVestingMode;
 }
 
-export function getVestingDestination() {
-  return;
-}
-
-// pass vesting address and switch
-const params = new URLSearchParams(location.search);
-
-let vestingAddress = params.get("vestingAddress");
-const isEthAddress = /^0x[a-fA-F0-9]{40}$/.test(vestingAddress || "");
-if (isEthAddress) {
-  document.body.dataset.mode = "vesting";
-} else {
-  document.body.dataset.mode = "default";
-  vestingAddress = null;
-}
+checkMode();
 
 // Listen for account changes with error handling
 if (typeof window.ethereum !== "undefined") {
@@ -120,4 +126,5 @@ document.addEventListener("DOMContentLoaded", () => {
   on("circulationBtn", circulationAt);
   /*  */
   on("transferOwnershipBtn", transferOwnership);
+  on("releaseTokensBtn", releaseTokens);
 });

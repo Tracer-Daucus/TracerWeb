@@ -1,7 +1,6 @@
 import { tokenContract, vestingContract } from "./contracts.js";
 import { CHAINS, CONTRACTS } from "./config.js";
 import { updateUI, showMessage } from "./ui.js";
-import { getVestingAddress } from "./main.js";
 
 let signer;
 export function getSigner() {
@@ -41,9 +40,6 @@ export function getVesting() {
 export function detectNetwork(chainId) {
   const networkId = parseInt(chainId);
   currentNetwork = CHAINS[networkId];
-  console.log(networkId);
-  console.log(CONTRACTS[networkId].tracer);
-  console.log("OK");
   if (currentNetwork) {
     tracerAddress = CONTRACTS[networkId].tracer;
     document.getElementById("network").textContent = currentNetwork.name;
@@ -110,8 +106,8 @@ export async function connectWallet() {
 
     // Initialize contract with current network
     contract = tokenContract(tracerAddress, signer);
-    if (getVestingAddress()) {
-      vesting = vestingContract(getVestingAddress(), signer);
+    if (window.appState.isVestingMode) {
+      vesting = vestingContract(window.vestingAddress, signer);
     }
     document.getElementById("checkVotingPowerBtn").disabled = false;
     document.getElementById("delegateVotingPowerBtn").disabled = false;
@@ -202,6 +198,47 @@ export async function refreshData() {
       el.classList.add("contract-info");
     } else {
       el.classList.remove("contract-info");
+    }
+
+    if (window.appState.isVestingMode) {
+      const tokenAddr = await contract.getAddress(); // ok whether sync/async
+      const vestingAddr = await vesting.getAddress();
+
+      const [vestingStart, vestingEnd, released, releasable, owner, balance] =
+        await Promise.all([
+          vesting.start(),
+          vesting.end(),
+          vesting["released(address)"](tokenAddr), // ✅ ERC20 overload
+          vesting["releasable(address)"](tokenAddr), // ✅ ERC20 overload
+          vesting.owner(),
+          contract.balanceOf(vestingAddr),
+        ]);
+
+      document.getElementById("vestingDestination").innerHTML = explorerLink(
+        "address",
+        owner
+      );
+
+      const formattedBalance = ethers.formatUnits(balance, decimals);
+      document.getElementById("vestingBalance").textContent = `${parseFloat(
+        formattedBalance
+      ).toLocaleString()} ${symbol}`;
+
+      const formattedRelease = ethers.formatUnits(released, decimals);
+      document.getElementById("releasedVesting").textContent = `${parseFloat(
+        formattedRelease
+      ).toLocaleString()} ${symbol}`;
+
+      const formattedReleasable = ethers.formatUnits(releasable, decimals);
+      document.getElementById("releasableVesting").textContent = `${parseFloat(
+        formattedReleasable
+      ).toLocaleString()} ${symbol}`;
+
+      const formattedStart = getDateString(Number(vestingStart));
+      document.getElementById("vestingStart").textContent = formattedStart;
+
+      const formattedEnd = getDateString(Number(vestingEnd));
+      document.getElementById("vestingEnd").textContent = formattedEnd;
     }
 
     showMessage("Data refreshed successfully!", "success");
@@ -319,5 +356,11 @@ function getLocalDeadline(minsFromNow = 60) {
 
   // 3. Slice the string to get the "YYYY-MM-DDTHH:MM" part,
   //    which is exactly what the datetime-local input needs.
+  return isoString.slice(0, 16);
+}
+
+function getDateString(time) {
+  const targetDate = new Date(time * 1000);
+  const isoString = targetDate.toISOString();
   return isoString.slice(0, 16);
 }

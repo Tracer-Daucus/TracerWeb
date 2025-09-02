@@ -18,10 +18,6 @@ export function setStatus(connected, text) {
   status.textContent = text || (connected ? "Connected" : "Not Connected");
 }
 
-export function setDataMode(mode /* "default" | "vesting" */) {
-  document.body.setAttribute("data-mode", mode);
-}
-
 export function getQueryParam(name) {
   const u = new URL(window.location.href);
   const v = u.searchParams.get(name);

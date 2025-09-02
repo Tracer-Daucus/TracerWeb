@@ -6,10 +6,11 @@ import {
   getSigner,
   explorerLink,
   refreshData,
+  getVesting,
 } from "./wallet.js";
-import { showMessage } from "./ui.js";
+import { showMessage, setButtonLoading, updateResultContainer } from "./ui.js";
 
-/* Operations */
+/* ERC20 Token Operations */
 
 export async function transferTokens() {
   const to = document.getElementById("transferTo").value;
@@ -20,7 +21,14 @@ export async function transferTokens() {
     return;
   }
 
+  if (!ethers.isAddress(to)) {
+    showMessage("Invalid recipient address", "error");
+    return;
+  }
+
   try {
+    setButtonLoading("transferTokensBtn", true);
+
     const decimals = await getContract().decimals();
     const amountWei = ethers.parseUnits(amount, decimals);
 
@@ -34,22 +42,29 @@ export async function transferTokens() {
     await tx.wait();
     await refreshData();
 
-    document.getElementById("transferTokensResult").innerHTML = `
-                            <div class="success">
-                                Transfer successul to ${explorerLink(
-                                  "address",
-                                  to
-                                )}<br/>
-                                TX Hash: ${explorerLink("tx", tx.hash)}
-                            </div>
-                       `;
+    updateResultContainer(
+      "transferTokensResult",
+      `
+      Transfer successful to ${explorerLink("address", to)}<br/>
+      TX Hash: ${explorerLink("tx", tx.hash)}
+    `
+    );
 
     // Clear inputs
     document.getElementById("transferTo").value = "";
     document.getElementById("transferAmount").value = "";
+
+    showMessage("Transfer completed successfully!", "success");
   } catch (error) {
     console.error("Transfer error:", error);
     showMessage(`Transfer failed: ${error.message}`, "error");
+    updateResultContainer(
+      "transferTokensResult",
+      `Transfer failed: ${error.message}`,
+      true
+    );
+  } finally {
+    setButtonLoading("transferTokensBtn", false);
   }
 }
 
@@ -62,7 +77,14 @@ export async function approveTokens() {
     return;
   }
 
+  if (!ethers.isAddress(spender)) {
+    showMessage("Invalid spender address", "error");
+    return;
+  }
+
   try {
+    setButtonLoading("approveTokensBtn", true);
+
     const decimals = await getContract().decimals();
     const amountWei = ethers.parseUnits(amount, decimals);
 
@@ -76,22 +98,29 @@ export async function approveTokens() {
     await tx.wait();
     await refreshData();
 
-    document.getElementById("approveTokensResult").innerHTML = `
-                            <div class="success">
-                                Approval successul to ${explorerLink(
-                                  "address",
-                                  spender
-                                )}<br/>
-                                TX Hash: ${explorerLink("tx", tx.hash)}
-                            </div>
-                       `;
+    updateResultContainer(
+      "approveTokensResult",
+      `
+      Approval successful to ${explorerLink("address", spender)}<br/>
+      TX Hash: ${explorerLink("tx", tx.hash)}
+    `
+    );
 
     // Clear inputs
     document.getElementById("approveSpender").value = "";
     document.getElementById("approveAmount").value = "";
+
+    showMessage("Approval completed successfully!", "success");
   } catch (error) {
     console.error("Approval error:", error);
     showMessage(`Approval failed: ${error.message}`, "error");
+    updateResultContainer(
+      "approveTokensResult",
+      `Approval failed: ${error.message}`,
+      true
+    );
+  } finally {
+    setButtonLoading("approveTokensBtn", false);
   }
 }
 
@@ -105,29 +134,47 @@ export async function checkAllowance() {
     return;
   }
 
+  if (!ethers.isAddress(spender)) {
+    showMessage("Invalid spender address", "error");
+    return;
+  }
+
+  if (owner && !ethers.isAddress(owner)) {
+    showMessage("Invalid owner address", "error");
+    return;
+  }
+
   try {
+    setButtonLoading("checkAllowanceBtn", true);
+
     const allowance = await getContract().allowance(owner, spender);
     const decimals = await getContract().decimals();
     const symbol = await getContract().symbol();
     const formattedAllowance = ethers.formatUnits(allowance, decimals);
 
-    document.getElementById("checkAllowanceResult").innerHTML = `
-                    <div class="success">
-                        Allowance: ${parseFloat(
-                          formattedAllowance
-                        ).toLocaleString()} ${symbol}
-                    </div>
-                `;
+    updateResultContainer(
+      "checkAllowanceResult",
+      `
+      Allowance: ${parseFloat(formattedAllowance).toLocaleString()} ${symbol}
+    `
+    );
   } catch (error) {
     console.error("Allowance check error:", error);
     showMessage(`Failed to check allowance: ${error.message}`, "error");
+    updateResultContainer(
+      "checkAllowanceResult",
+      `Failed to check allowance: ${error.message}`,
+      true
+    );
+  } finally {
+    setButtonLoading("checkAllowanceBtn", false);
   }
 }
 
 export async function signAndSubmitPermit() {
   const spender = document.getElementById("permitSpenderAddress").value.trim();
   const amountStr = document.getElementById("permitAmount").value.trim();
-  const deadlineStr = document.getElementById("deadlineStr").value.trim(); // <input type="datetime-local">
+  const deadlineStr = document.getElementById("deadlineStr").value.trim();
 
   // Basic validations
   if (!ethers.isAddress(spender)) {
@@ -144,9 +191,7 @@ export async function signAndSubmitPermit() {
   }
 
   try {
-    // Disable button + info
-    const btn = document.getElementById("signAndSubmitPermitBtn");
-    btn.disabled = true;
+    setButtonLoading("signAndSubmitPermitBtn", true);
     showMessage("Signing permit and sending transaction…", "info");
 
     // Gather data
@@ -164,17 +209,13 @@ export async function signAndSubmitPermit() {
     const deadlineMs = new Date(deadlineStr).getTime();
     if (Number.isNaN(deadlineMs)) {
       showMessage("Invalid deadline format", "error");
-      btn.disabled = false;
       return;
     }
     const deadline = Math.floor(deadlineMs / 1000);
     const nowSec = Math.floor(Date.now() / 1000);
-    console.log(deadline);
-    console.log(nowSec);
 
     if (deadline <= nowSec) {
       showMessage("Deadline must be in the future", "error");
-      btn.disabled = false;
       return;
     }
 
@@ -223,27 +264,35 @@ export async function signAndSubmitPermit() {
       "success"
     );
 
-    await refreshData();
     await tx.wait();
+    await refreshData();
 
-    document.getElementById("signAndSubmitPermitResult").innerHTML = `
-                            <div class="success">
-                                Permit submitted successfully for ${explorerLink(
-                                  "address",
-                                  spender
-                                )}<br/>
-                                Tx Hash: ${explorerLink("tx", tx.hash)}
-                            </div>
-                       `;
+    updateResultContainer(
+      "signAndSubmitPermitResult",
+      `
+      Permit submitted successfully for ${explorerLink("address", spender)}<br/>
+      Tx Hash: ${explorerLink("tx", tx.hash)}
+    `
+    );
+
     showMessage(
       "Permit successful! Allowance has been set via signature.",
       "success"
     );
+
+    // Clear inputs
+    document.getElementById("permitSpenderAddress").value = "";
+    document.getElementById("permitAmount").value = "";
   } catch (error) {
     console.error("Permit error:", error);
-    showMessage(`Permit failed: ${error.message} `, "error");
+    showMessage(`Permit failed: ${error.message}`, "error");
+    updateResultContainer(
+      "signAndSubmitPermitResult",
+      `Permit failed: ${error.message}`,
+      true
+    );
   } finally {
-    document.getElementById("signAndSubmitPermitBtn").disabled = false;
+    setButtonLoading("signAndSubmitPermitBtn", false);
   }
 }
 
@@ -255,8 +304,9 @@ export async function checkVotingPower() {
     showMessage("Invalid address", "error");
     return;
   }
+
   try {
-    document.getElementById("checkVotingPowerBtn").disabled = true;
+    setButtonLoading("checkVotingPowerBtn", true);
     showMessage("Fetching voting power...", "info");
 
     const votes = await getContract().getVotes(address);
@@ -264,19 +314,24 @@ export async function checkVotingPower() {
     const symbol = await getContract().symbol();
     const formattedVotes = ethers.formatUnits(votes, decimals);
 
-    document.getElementById("checkVotingPowerResult").innerHTML = `
-            <div class="success">
-                Voting Power: ${parseFloat(
-                  formattedVotes
-                ).toLocaleString()} ${symbol}
-            </div>
-        `;
+    updateResultContainer(
+      "checkVotingPowerResult",
+      `
+      Voting Power: ${parseFloat(formattedVotes).toLocaleString()} ${symbol}
+    `
+    );
+
     showMessage("Voting power retrieved!", "success");
   } catch (error) {
     console.error("Voting power error:", error);
     showMessage(`Failed to fetch voting power: ${error.message}`, "error");
+    updateResultContainer(
+      "checkVotingPowerResult",
+      `Failed to fetch voting power: ${error.message}`,
+      true
+    );
   } finally {
-    document.getElementById("checkVotingPowerBtn").disabled = false;
+    setButtonLoading("checkVotingPowerBtn", false);
   }
 }
 
@@ -290,82 +345,159 @@ export async function delegateVotingPower() {
   }
 
   try {
-    document.getElementById("delegateVotingPowerBtn").disabled = true;
+    setButtonLoading("delegateVotingPowerBtn", true);
     showMessage("Sending delegation transaction...", "info");
 
     const tx = await getContract().delegate(delegatee);
-    await tx.wait();
+    showMessage(
+      "Transaction submitted! Waiting for confirmation...",
+      "success"
+    );
 
+    await tx.wait();
     await refreshData();
 
-    document.getElementById("delegateVotingPowerResult").innerHTML = `
-            <div class="success">
-                Successfully delegated to ${explorerLink(
-                  "address",
-                  delegatee
-                )}<br>
-                Tx Hash: ${explorerLink("tx", tx.hash)}
+    updateResultContainer(
+      "delegateVotingPowerResult",
+      `
+      Successfully delegated to ${explorerLink("address", delegatee)}<br>
+      Tx Hash: ${explorerLink("tx", tx.hash)}
+    `
+    );
 
-            </div>
-        `;
     showMessage("Delegation successful!", "success");
+
+    // Clear input
+    document.getElementById("delegateAddress").value = "";
   } catch (error) {
     console.error("Delegation error:", error);
     showMessage(`Delegation failed: ${error.message}`, "error");
+    updateResultContainer(
+      "delegateVotingPowerResult",
+      `Delegation failed: ${error.message}`,
+      true
+    );
   } finally {
-    document.getElementById("delegateVotingPowerBtn").disabled = false;
+    setButtonLoading("delegateVotingPowerBtn", false);
   }
 }
 
 export async function circulationAt() {
-  const circulationAt = document.getElementById("circulationTime").value.trim(); // <input type="datetime-local">
+  const circulationTime = document
+    .getElementById("circulationTime")
+    .value.trim();
 
-  if (!circulationAt) {
-    showMessage("Please choose a deadline (date & time)", "error");
+  if (!circulationTime) {
+    showMessage("Please choose a date & time", "error");
     return;
   }
 
   // Convert local datetime to UNIX seconds
-  const circulationAtQuery = new Date(circulationAt).getTime();
+  const circulationAtQuery = new Date(circulationTime).getTime();
   if (Number.isNaN(circulationAtQuery)) {
-    showMessage("Invalid deadline format", "error");
-    btn.disabled = false;
+    showMessage("Invalid date format", "error");
     return;
   }
   const circulationAtValue = Math.floor(circulationAtQuery / 1000);
+
   try {
+    setButtonLoading("circulationBtn", true);
+
     const circulation = await getContract().circulatingSupplyAt(
       BigInt(circulationAtValue)
     );
     const decimals = await getContract().decimals();
     const symbol = await getContract().symbol();
     const formattedCirculation = ethers.formatUnits(circulation, decimals);
+    const circulatingSupply = ethers.formatUnits(
+      await getContract().totalSupply(),
+      decimals
+    );
 
-    document.getElementById("circulationResult").innerHTML = `
-                    <div class="success">
-                        Circulation: ${parseFloat(
-                          formattedCirculation
-                        ).toLocaleString()} ${symbol}
-                    </div>
-                `;
+    updateResultContainer(
+      "circulationResult",
+      `
+      Circulation at ${new Date(
+        circulationTime
+      ).toLocaleString()}: ${parseFloat(
+        Math.floor(formattedCirculation)
+      ).toLocaleString()} ${symbol} = ${parseFloat(
+        (100 * formattedCirculation) / circulatingSupply
+      ).toLocaleString()}%
+    `
+    );
   } catch (error) {
-    console.error("Circuation check error:", error);
+    console.error("Circulation check error:", error);
     showMessage(`Failed to check circulation: ${error.message}`, "error");
+    updateResultContainer(
+      "circulationResult",
+      `Failed to check circulation: ${error.message}`,
+      true
+    );
+  } finally {
+    setButtonLoading("circulationBtn", false);
   }
-  document.getElementById("circulationBtn").disabled = false;
 }
+
+/* Vesting Contract Operations */
 
 export async function transferOwnership() {
   const to = document.getElementById("transferTo").value;
 
   if (!to) {
-    showMessage("Please fill in address", "error");
+    showMessage("Please enter recipient address", "error");
+    return;
+  }
+
+  if (!ethers.isAddress(to)) {
+    showMessage("Invalid recipient address", "error");
     return;
   }
 
   try {
+    setButtonLoading("transferOwnershipBtn", true);
     showMessage("Transaction pending... Please confirm in MetaMask", "info");
+
     const tx = await getVesting().transferOwnership(to);
+    showMessage(
+      "Transaction submitted! Waiting for confirmation...",
+      "success"
+    );
+
+    await tx.wait();
+    await refreshData();
+
+    updateResultContainer(
+      "transferOwnershipResult",
+      `
+      Ownership transferred successfully to ${explorerLink("address", to)}<br/>
+      TX Hash: ${explorerLink("tx", tx.hash)}
+    `
+    );
+
+    // Clear input
+    document.getElementById("transferTo").value = "";
+    showMessage("Ownership transfer completed!", "success");
+  } catch (error) {
+    console.error("Transfer ownership error:", error);
+    showMessage(`Transfer failed: ${error.message}`, "error");
+    updateResultContainer(
+      "transferOwnershipResult",
+      `Transfer failed: ${error.message}`,
+      true
+    );
+  } finally {
+    setButtonLoading("transferOwnershipBtn", false);
+  }
+}
+
+export async function releaseTokens() {
+  try {
+    setButtonLoading("releaseTokensBtn", true);
+    showMessage("Transaction pending... Please confirm in MetaMask", "info");
+
+    const tokenAddress = await getContract().getAddress();
+    const tx = await getVesting().release(tokenAddress);
 
     showMessage(
       "Transaction submitted! Waiting for confirmation...",
@@ -374,20 +506,24 @@ export async function transferOwnership() {
     await tx.wait();
     await refreshData();
 
-    document.getElementById("transferOwbershipResult").innerHTML = `
-                            <div class="success">
-                                Transfer successul to ${explorerLink(
-                                  "address",
-                                  to
-                                )}<br/>
-                                TX Hash: ${explorerLink("tx", tx.hash)}
-                            </div>
-                       `;
+    updateResultContainer(
+      "releaseTokensResult",
+      `
+      Tokens released successfully!<br/>
+      TX Hash: ${explorerLink("tx", tx.hash)}
+    `
+    );
 
-    // Clear inputs
-    document.getElementById("transferTo").value = "";
+    showMessage("Token release completed!", "success");
   } catch (error) {
-    console.error("Transfer error:", error);
-    showMessage(`Transfer failed: ${error.message}`, "error");
+    console.error("Release tokens error:", error);
+    showMessage(`Release failed: ${error.message}`, "error");
+    updateResultContainer(
+      "releaseTokensResult",
+      `Release failed: ${error.message}`,
+      true
+    );
+  } finally {
+    setButtonLoading("releaseTokensBtn", false);
   }
 }

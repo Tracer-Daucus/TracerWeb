@@ -1,31 +1,27 @@
 /* Operations */
 import { getUserAccount, explorerLink } from "./wallet.js";
-import { getVestingAddress, getVestingDestination } from "./main.js";
 
-export function showMessage(message, type) {
+export function showMessage(message, type = "success") {
   const messagesDiv = document.getElementById("messages");
   const messageDiv = document.createElement("div");
   messageDiv.className = type;
   messageDiv.textContent = message;
   messagesDiv.appendChild(messageDiv);
 
-  // Remove message after 5 seconds
-  safeDelay(() => {
-    if (messageDiv.parentNode) {
-      messageDiv.parentNode.removeChild(messageDiv);
-    }
-  }, 5000);
+  messagesDiv.prepend(messageDiv);
+  // Remove message afetr 8 secs
+  setTimeout(() => messageDiv.remove(), 8000);
 }
 
 export function updateUI() {
-  if (getVestingAddress()) {
+  if (window.appState.isVestingMode) {
     document.getElementById("vestingAddress").innerHTML = explorerLink(
       "address",
-      getVestingAddress()
+      window.vestingAddress
     );
     document.getElementById("vestingDestination").innerHTML = explorerLink(
       "address",
-      getVestingDestination()
+      ""
     );
   }
   if (getUserAccount()) {
@@ -55,17 +51,63 @@ export function updateUI() {
   }
 }
 
-function safeDelay(callback, ms = 0) {
-  return new Promise((resolve) => {
-    const startTime = performance.now();
-    function checkTime() {
-      if (performance.now() - startTime >= ms) {
-        callback();
-        resolve();
-      } else {
-        requestAnimationFrame(checkTime);
-      }
-    }
-    requestAnimationFrame(checkTime);
+// Format large numbers for display
+export function formatNumber(value, decimals = 2) {
+  if (typeof value === "string") {
+    value = parseFloat(value);
+  }
+
+  if (isNaN(value)) return "0";
+
+  // Use toLocaleString for thousands separators
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
   });
+}
+
+// Validate Ethereum address
+export function isValidAddress(address) {
+  return ethers.isAddress(address);
+}
+
+// Truncate address for display
+export function truncateAddress(address, startLength = 6, endLength = 4) {
+  if (!address) return "";
+  if (address.length <= startLength + endLength) return address;
+
+  return `${address.substring(0, startLength)}...${address.substring(
+    address.length - endLength
+  )}`;
+}
+
+// Add loading state to button
+export function setButtonLoading(buttonId, isLoading, originalText = null) {
+  const button = document.getElementById(buttonId);
+  if (!button) return;
+
+  if (isLoading) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = "Processing...";
+    button.disabled = true;
+    button.style.opacity = "0.6";
+  } else {
+    button.textContent =
+      originalText || button.dataset.originalText || button.textContent;
+    button.disabled = false;
+    button.style.opacity = "1";
+    delete button.dataset.originalText;
+  }
+}
+
+// Update result containers
+export function updateResultContainer(containerId, content, isError = false) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="${isError ? "error" : "success"}">
+      ${content}
+    </div>
+  `;
 }
