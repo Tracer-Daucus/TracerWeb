@@ -282,7 +282,7 @@ function updateNetworkUI() {
     document.getElementById("network").textContent = getCurrentNetwork().name;
     document.getElementById("tracerAddress").innerHTML = explorerLink(
       "address",
-      getCurrentNetwork().address
+      getContractAddress()
     );
 
     // Show/hide mainnet warning
