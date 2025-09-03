@@ -2,15 +2,6 @@ export function $(id) {
   return document.getElementById(id);
 }
 
-export function showMessage(html, type = "success") {
-  const el = $("messages");
-  const div = document.createElement("div");
-  div.className = type;
-  div.innerHTML = html;
-  el.prepend(div);
-  setTimeout(() => div.remove(), 8000);
-}
-
 export function toBigIntSecondsFromLocal(inputValue) {
   // Works with <input type="datetime-local"> or ISO-like strings.
   const ms = new Date(inputValue).getTime();

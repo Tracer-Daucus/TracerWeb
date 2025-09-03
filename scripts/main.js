@@ -12,32 +12,32 @@ import {
   releaseTokens,
 } from "./operations.js";
 
-import { parseAmountToUnits } from "./utils.js";
+import { appState } from "../core/state.js";
 
-// Global app state to avoid circular imports
-window.appState = {
-  isVestingMode: false,
-};
-
-// Check URL parameters and set mode
 function checkMode() {
   const urlParams = new URLSearchParams(window.location.search);
   const vestingAddress = urlParams.get("vesting");
 
   if (vestingAddress && ethers.isAddress(vestingAddress)) {
-    window.appState.isVestingMode = true;
+    appState.setState("ui.isVestingMode", true);
     document.body.setAttribute("data-mode", "vesting");
-    // Store vesting address for use by other modules
     window.vestingAddress = vestingAddress;
   } else {
-    window.appState.isVestingMode = false;
+    appState.setState("ui.isVestingMode", false);
     document.body.setAttribute("data-mode", "default");
   }
 
-  return window.appState.isVestingMode;
+  return appState.getState("ui.isVestingMode");
 }
 
 checkMode();
+
+// ADD this for backward compatibility - so existing code still works
+window.appState = {
+  get isVestingMode() {
+    return appState.getState("ui.isVestingMode");
+  },
+};
 
 // Listen for account changes with error handling
 if (typeof window.ethereum !== "undefined") {
