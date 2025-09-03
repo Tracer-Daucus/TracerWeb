@@ -11,43 +11,17 @@ export function showMessage(html, type = "success") {
   setTimeout(() => div.remove(), 8000);
 }
 
-export function setStatus(connected, text) {
-  const status = $("status");
-  status.classList.toggle("connected", !!connected);
-  status.classList.toggle("disconnected", !connected);
-  status.textContent = text || (connected ? "Connected" : "Not Connected");
-}
-
-export function getQueryParam(name) {
-  const u = new URL(window.location.href);
-  const v = u.searchParams.get(name);
-  return v && v.trim() ? v.trim() : null;
-}
-
-export function getModeFromURL() {
-  const v = getQueryParam("vesting");
-  return v ? "vesting" : "default";
-}
-
-export function getChainFromURL() {
-  // ?chain=arbitrum or ?chain=arbitrum-sepolia (fallback to arbitrum)
-  const c = getQueryParam("chain");
-  return c === "arbitrum" || c === "arbitrum-sepolia" ? c : "arbitrum";
-}
-
-export function isAddress(addr) {
-  try {
-    return ethers.isAddress(addr);
-  } catch {
-    return false;
-  }
-}
-
 export function toBigIntSecondsFromLocal(inputValue) {
   // Works with <input type="datetime-local"> or ISO-like strings.
   const ms = new Date(inputValue).getTime();
   if (Number.isNaN(ms)) throw new Error("Invalid datetime");
   return BigInt(Math.floor(ms / 1000));
+}
+
+export function toLocalFromSeconds(time) {
+  const targetDate = new Date(time * 1000);
+  const isoString = targetDate.toISOString();
+  return isoString.slice(0, 16);
 }
 
 export function formatAmount(u256, decimals) {

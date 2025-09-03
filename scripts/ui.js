@@ -51,7 +51,6 @@ export function updateUI() {
     const isNotOwner = getUserAccount() != getVestingOwner();
 
     document.getElementById("transferOwnershipBtn").disabled = isNotOwner;
-
     document.getElementById("ownerBadge").hidden = isNotOwner;
   }
 }

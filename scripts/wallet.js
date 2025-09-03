@@ -1,6 +1,7 @@
 import { getTokenContract, getVestingContract } from "./contracts.js";
 import { CHAINS, CONTRACTS } from "./config.js";
 import { updateUI, showMessage } from "./ui.js";
+import { formatAmount, toLocalFromSeconds } from "./utils.js";
 
 let signer;
 export function getSigner() {
@@ -174,20 +175,20 @@ export async function refreshData() {
     ]);
 
     // Format and display
-    const formattedBalance = ethers.formatUnits(balance, decimals);
-    const formattedTotalSupply = ethers.formatUnits(totalSupply, decimals);
-    const formattedVotingPower = ethers.formatUnits(votingPower, decimals);
+    const formattedBalance = formatAmount(balance, decimals);
+    const formattedTotalSupply = formatAmount(totalSupply, decimals);
+    const formattedVotingPower = formatAmount(votingPower, decimals);
 
-    document.getElementById("balance").textContent = `${parseFloat(
-      formattedBalance
-    ).toLocaleString()} ${symbol}`;
-    document.getElementById("totalSupply").textContent = `${parseFloat(
-      formattedTotalSupply
-    ).toLocaleString()} ${symbol}`;
+    document.getElementById(
+      "balance"
+    ).textContent = `${formattedBalance} ${symbol}`;
+    document.getElementById(
+      "totalSupply"
+    ).textContent = `${formattedTotalSupply} ${symbol}`;
     document.getElementById("nonce").textContent = nonce.toString();
-    document.getElementById("votingPower").textContent = `${parseFloat(
-      formattedVotingPower
-    ).toLocaleString()} ${symbol}`;
+    document.getElementById(
+      "votingPower"
+    ).textContent = `${formattedVotingPower} ${symbol}`;
 
     const el = document.getElementById("delegates");
 
@@ -226,26 +227,25 @@ export async function refreshData() {
         owner
       );
 
-      const formattedBalance = ethers.formatUnits(balance, decimals);
-      const formattedRelease = ethers.formatUnits(released, decimals);
-      const formattedReleasable = ethers.formatUnits(releasable, decimals);
+      const formattedUnvested = formatAmount(balance - releasable, decimals);
+      document.getElementById(
+        "unvestedBalance"
+      ).textContent = `${formattedUnvested} ${symbol}`;
 
-      document.getElementById("unvestedBalance").textContent = `${parseFloat(
-        formattedBalance - formattedReleasable
-      ).toLocaleString()} ${symbol}`;
+      const formattedRelease = formatAmount(released, decimals);
+      document.getElementById(
+        "releasedVesting"
+      ).textContent = `${formattedRelease} ${symbol}`;
 
-      document.getElementById("releasedVesting").textContent = `${parseFloat(
-        formattedRelease
-      ).toLocaleString()} ${symbol}`;
+      const formattedReleasable = formatAmount(releasable, decimals);
+      document.getElementById(
+        "releasableVesting"
+      ).textContent = `${formattedReleasable} ${symbol}`;
 
-      document.getElementById("releasableVesting").textContent = `${parseFloat(
-        formattedReleasable
-      ).toLocaleString()} ${symbol}`;
-
-      const formattedStart = getDateString(Number(vestingStart));
+      const formattedStart = toLocalFromSeconds(Number(vestingStart));
       document.getElementById("vestingStart").textContent = formattedStart;
 
-      const formattedEnd = getDateString(Number(vestingEnd));
+      const formattedEnd = toLocalFromSeconds(Number(vestingEnd));
       document.getElementById("vestingEnd").textContent = formattedEnd;
     }
 
@@ -364,11 +364,5 @@ function getLocalDeadline(minsFromNow = 60) {
 
   // 3. Slice the string to get the "YYYY-MM-DDTHH:MM" part,
   //    which is exactly what the datetime-local input needs.
-  return isoString.slice(0, 16);
-}
-
-function getDateString(time) {
-  const targetDate = new Date(time * 1000);
-  const isoString = targetDate.toISOString();
   return isoString.slice(0, 16);
 }

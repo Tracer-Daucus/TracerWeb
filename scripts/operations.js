@@ -1,4 +1,3 @@
-/* Operations */
 import {
   getUserAccount,
   getContract,
@@ -8,7 +7,10 @@ import {
   refreshData,
   getVesting,
 } from "./wallet.js";
+
 import { showMessage, setButtonLoading, updateResultContainer } from "./ui.js";
+
+import { formatAmount, toBigIntSecondsFromLocal } from "./utils.js";
 
 /* ERC20 Token Operations */
 
@@ -30,7 +32,7 @@ export async function transferTokens() {
     setButtonLoading("transferTokensBtn", true);
 
     const decimals = await getContract().decimals();
-    const amountWei = ethers.parseUnits(amount, decimals);
+    const amountWei = parseAmountToUnits(amount, decimals);
 
     showMessage("Transaction pending... Please confirm in MetaMask", "info");
     const tx = await getContract().transfer(to, amountWei);
@@ -86,7 +88,7 @@ export async function approveTokens() {
     setButtonLoading("approveTokensBtn", true);
 
     const decimals = await getContract().decimals();
-    const amountWei = ethers.parseUnits(amount, decimals);
+    const amountWei = parseAmountToUnits(amount, decimals);
 
     showMessage("Transaction pending... Please confirm in MetaMask", "info");
     const tx = await getContract().approve(spender, amountWei);
@@ -150,12 +152,12 @@ export async function checkAllowance() {
     const allowance = await getContract().allowance(owner, spender);
     const decimals = await getContract().decimals();
     const symbol = await getContract().symbol();
-    const formattedAllowance = ethers.formatUnits(allowance, decimals);
+    const formattedAllowance = formatAmount(allowance, decimals);
 
     updateResultContainer(
       "checkAllowanceResult",
       `
-      Allowance: ${parseFloat(formattedAllowance).toLocaleString()} ${symbol}
+      Allowance: ${formattedAllowance} ${symbol}
     `
     );
   } catch (error) {
@@ -203,16 +205,11 @@ export async function signAndSubmitPermit() {
       getProvider().getNetwork(),
     ]);
 
-    const value = ethers.parseUnits(amountStr, decimals);
+    const value = parseAmountToUnits(amountStr, decimals);
 
     // Convert local datetime to UNIX seconds
-    const deadlineMs = new Date(deadlineStr).getTime();
-    if (Number.isNaN(deadlineMs)) {
-      showMessage("Invalid deadline format", "error");
-      return;
-    }
-    const deadline = Math.floor(deadlineMs / 1000);
-    const nowSec = Math.floor(Date.now() / 1000);
+    const deadline = toBigIntSecondsFromLocal(deadlineStr);
+    const nowSec = BigInt(Date.now() / 1000);
 
     if (deadline <= nowSec) {
       showMessage("Deadline must be in the future", "error");
@@ -312,12 +309,12 @@ export async function checkVotingPower() {
     const votes = await getContract().getVotes(address);
     const decimals = await getContract().decimals();
     const symbol = await getContract().symbol();
-    const formattedVotes = ethers.formatUnits(votes, decimals);
+    const formattedVotes = formatAmount(votes, decimals);
 
     updateResultContainer(
       "checkVotingPowerResult",
       `
-      Voting Power: ${parseFloat(formattedVotes).toLocaleString()} ${symbol}
+      Voting Power: ${formattedVotes} ${symbol}
     `
     );
 
@@ -393,18 +390,13 @@ export async function circulationAt() {
   }
 
   // Convert local datetime to UNIX seconds
-  const circulationAtQuery = new Date(circulationTime).getTime();
-  if (Number.isNaN(circulationAtQuery)) {
-    showMessage("Invalid date format", "error");
-    return;
-  }
-  const circulationAtValue = Math.floor(circulationAtQuery / 1000);
+  const circulationAtValue = toBigIntSecondsFromLocal(circulationTime);
 
   try {
     setButtonLoading("circulationBtn", true);
 
     const circulation = await getContract().circulatingSupplyAt(
-      BigInt(circulationAtValue)
+      circulationAtValue
     );
     const decimals = await getContract().decimals();
     const symbol = await getContract().symbol();

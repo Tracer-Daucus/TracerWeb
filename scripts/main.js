@@ -1,13 +1,6 @@
-import {
-  getCurrentNetwork,
-  getContractAddress,
-  connectWallet,
-  refreshData,
-  addToMetaMask,
-} from "./wallet.js";
+import { connectWallet, refreshData, addToMetaMask } from "./wallet.js";
 
 import {
-  /*  */
   transferTokens,
   approveTokens,
   checkAllowance,
@@ -18,6 +11,8 @@ import {
   transferOwnership,
   releaseTokens,
 } from "./operations.js";
+
+import { parseAmountToUnits } from "./utils.js";
 
 // Global app state to avoid circular imports
 window.appState = {
