@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
   on("connectBtn", connectWallet);
   on("refreshBtn", refreshData);
   on("addTokenBtn", addToMetaMask);
-  /*  */
+  /*  Tracer */
   on("transferTokensBtn", transferTokens);
   on("approveTokensBtn", approveTokens);
   on("checkAllowanceBtn", checkAllowance);
@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
   on("delegateVotingPowerBtn", delegateVotingPower);
   on("checkVotingPowerBtn", checkVotingPower);
   on("circulationBtn", circulationAt);
-  /*  */
+  /* Vesting */
   on("transferOwnershipBtn", transferOwnership);
   on("releaseTokensBtn", releaseTokens);
 });

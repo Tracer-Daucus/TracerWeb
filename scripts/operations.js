@@ -200,17 +200,16 @@ export async function signAndSubmitPermit() {
     showMessage("Signing permit and sending transaction…", "info");
 
     // Gather data
-    decimals = appState.getState("tracer.decimals");
-    name = appState.getState("tracer.name");
-    tokenAddress = appState.getState("tracer.address");
-    nonce = appState.getState("wallet.account");
-    network = appState.getState("wallet.network");
-
+    const decimals = appState.getState("tracer.decimals");
+    const name = appState.getState("tracer.name");
+    const tokenAddress = appState.getState("tracer.address");
+    const tracer = appState.getState("tracer.contract");
+    const nonce = await tracer.nonces(appState.getState("wallet.account"));
+    const network = appState.getState("wallet.network");
     const value = parseAmountToUnits(amountStr, decimals);
-
     // Convert local datetime to UNIX seconds
     const deadline = toBigIntSecondsFromLocal(deadlineStr);
-    const nowSec = BigInt(Date.now() / 1000);
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
 
     if (deadline <= nowSec) {
       showMessage("Deadline must be in the future", "error");
@@ -221,7 +220,7 @@ export async function signAndSubmitPermit() {
     const domain = {
       name,
       version: "1", // OpenZeppelin ERC20Permit default
-      chainId: Number(network.chainId),
+      chainId: parseInt(network.chainIdHex, 16),
       verifyingContract: tokenAddress,
     };
 
@@ -237,16 +236,15 @@ export async function signAndSubmitPermit() {
 
     const message = {
       owner: appState.getState("wallet.account"),
-      spender,
-      value,
-      nonce,
-      deadline,
+      spender: spender,
+      value: value,
+      nonce: nonce,
+      deadline: deadline,
     };
 
     // Ask wallet to sign typed data (EIP-712)
-    const signature = await appState
-      .getState("wallet.signer")
-      .signTypedData(domain, types, message);
+    const signer = appState.getState("wallet.signer");
+    const signature = await signer.signTypedData(domain, types, message);
     const { v, r, s } = ethers.Signature.from(signature);
 
     // Submit permit on-chain
@@ -497,7 +495,7 @@ export async function releaseTokens() {
     setButtonLoading("releaseTokensBtn", true);
     showMessage("Transaction pending... Please confirm in MetaMask", "info");
 
-    const tokenAddress = appState.getState("tracer.contract");
+    const tokenAddress = appState.getState("tracer.address");
     const tx = await appState
       .getState("vesting.contract")
       ["release(address)"](tokenAddress);
