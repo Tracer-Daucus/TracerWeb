@@ -57,7 +57,7 @@ export function updateUI() {
       decimals
     );
     const formattedTotalSupply = formatAmount(
-      appState.getState("tracertData.totalSupply"),
+      appState.getState("tracerData.totalSupply"),
       decimals
     );
     const formattedVotingPower = formatAmount(
@@ -72,7 +72,7 @@ export function updateUI() {
       "totalSupply"
     ).textContent = `${formattedTotalSupply} ${symbol}`;
     document.getElementById("nonce").textContent = appState
-      .getState("tracertData.nonce")
+      .getState("tracerData.nonce")
       .toString();
     document.getElementById(
       "votingPower"

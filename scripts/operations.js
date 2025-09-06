@@ -407,7 +407,7 @@ export async function circulationAt() {
     const symbol = appState.getState("tracer.symbol");
     const formattedCirculation = ethers.formatUnits(circulation, decimals);
     const circulatingSupply = ethers.formatUnits(
-      appState.getState("tracertData.totalSupply"),
+      appState.getState("tracerData.totalSupply"),
       decimals
     );
 
