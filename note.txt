@@ -63,16 +63,19 @@ Send TRCR tokens directly to another wallet address.
                         <p><strong>⚠️ Important:</strong> Always double-check the recipient address as blockchain transactions cannot be reversed.</p>
                         <p><strong>💡 Tip:</strong> You’ll need ETH (or the chain’s native token) to pay gas fees.</p>
 
+Check Allowance
+View the amount of TRCR you’ve approved for a specific address or smart contract.
+
 Approve Allowance
 Authorize another address or contract (e.g., a DEX) to spend your TRCR on your behalf.
 <strong>💡 Tip:</strong> Only approve the amount you intend to use for better security.
 
-Check Allowance
-
 Permit via Signature
+Sign a message (EIP-2612 permit) to approve token spending without sending a transaction.
+                        <p><strong>💡 Tip:</strong> Saves gas fees by avoiding an on-chain approval transaction.</p>
 
 
-Check Voting Power
+Delegate Voting Power
 Assign your voting rights to another address for governance decisions. Leave the field empty to delegate to yourself and activate your own voting power.
 <strong>Note:</strong> You must delegate (even to yourself) before your tokens can be used for voting.
 
@@ -81,9 +84,11 @@ Assign your voting rights to another address for governance decisions. Leave the
 <strong>Note:</strong> You must delegate (even to yourself) before your tokens can be used
                             for voting.
 
-
+Burn Tokens
+Permanently destroy TRCR tokens by removing them from circulation. Burning reduces the total supply and can increase scarcity.
 Circulation Check
 Circulation is the amount of TRCR tokens not locked in a vesting contract at the selected date.
+<strong>⚠️ Important:</strong> Burned tokens cannot be recovered.
 
 
 Release Tokens

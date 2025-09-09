@@ -10,6 +10,7 @@ import {
   circulationAt,
   transferOwnership,
   releaseTokens,
+  burnTokens,
 } from "./operations.js";
 
 import { appState } from "../core/state.js";
@@ -127,6 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
   on("delegateVotingPowerBtn", delegateVotingPower);
   on("checkVotingPowerBtn", checkVotingPower);
   on("circulationBtn", circulationAt);
+  on("burnBtn", burnTokens);
   /* Vesting */
   on("transferOwnershipBtn", transferOwnership);
   on("releaseTokensBtn", releaseTokens);

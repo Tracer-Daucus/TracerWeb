@@ -38,6 +38,7 @@ export function updateUI() {
       "checkVotingPowerBtn",
       "delegateVotingPowerBtn",
       "circulationBtn",
+      "burnBtn",
     ];
 
     buttons.forEach((id) => (document.getElementById(id).disabled = false));

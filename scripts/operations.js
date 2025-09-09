@@ -436,6 +436,56 @@ export async function circulationAt() {
   }
 }
 
+export async function burnTokens() {
+  const amount = document.getElementById("burnAmount").value;
+
+  if (!amount) {
+    showMessage("Please fill in an amount", "error");
+    return;
+  }
+
+  try {
+    setButtonLoading("burnBtn", true);
+
+    const symbol = appState.getState("tracer.symbol");
+    const decimals = appState.getState("tracer.decimals");
+    const amountWei = parseAmountToUnits(amount, decimals);
+
+    showMessage("Transaction pending... Please confirm in MetaMask", "info");
+    const tx = await appState.getState("tracer.contract").burn(amountWei);
+
+    showMessage(
+      "Transaction submitted! Waiting for confirmation...",
+      "success"
+    );
+    await tx.wait();
+    await refreshData();
+
+    updateResultContainer(
+      "burnResult",
+      `
+      Burn of ${amount} ${symbol} successful<br/>
+      TX Hash: ${explorerLink("tx", tx.hash)}
+    `
+    );
+
+    // Clear inputs
+    document.getElementById("burnAmount").value = "";
+
+    showMessage("Burn completed successfully!", "success");
+  } catch (error) {
+    console.error("Burn error:", error);
+    showMessage(`Burn failed: ${error.message}`, "error");
+    updateResultContainer(
+      "burnResult",
+      `Transfer failed: ${error.message}`,
+      true
+    );
+  } finally {
+    setButtonLoading("burnBtn", false);
+  }
+}
+
 /* Vesting Contract Operations */
 
 export async function transferOwnership() {

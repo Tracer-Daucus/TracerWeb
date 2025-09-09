@@ -29,7 +29,7 @@ export const CHAINS = {
 // Default contracts per chain (override via URL ?token= & ?vesting=)
 export const CONTRACTS = {
   421614: {
-    tracer: "0x5B4f2b9a1D39c62491056e9C97bC873997FEe6c8",
+    tracer: "0xcb991af4233D31af83708DbC45c45226D7833Ce9",
   },
   42161: {
     tracer: "0x0000000000000000000000000000000000000000", // Replace with actual mainnet address

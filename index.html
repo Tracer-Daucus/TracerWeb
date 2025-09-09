@@ -26,7 +26,7 @@
 
         <div class="notice">
             ⚠️ Connect your wallet with MetaMask (works with Ledger Nano) to view your
-            TRCR tokens. v0.6
+            TRCR tokens. v0.7
         </div>
 
         <div id="status" class="status disconnected">
@@ -501,6 +501,32 @@
                 </div>
             </div>
         </div>
+
+        <div class="transaction-section flip-enabled show-default" id="section-burn">
+            <div class="flip-inner">
+                <div class="flip-front">
+                    <h3>Burn Tokens</h3>
+                    <div class="input-group">
+                        <label for="burnAmount">Amount (TRCR):</label>
+                        <input type="number" id="burnAmount" placeholder="0.0" step="0.000000000000000001" />
+                    </div>
+                    <button disabled id="burnBtn">Burn</button>
+                    <div id="burnResult"></div>
+                    <button class="help-button">?</button>
+                </div>
+                <div class="flip-back">
+                    <div class="help-content">
+                        <h4>Burn Tokens</h4>
+                        <p>Permanently destroy TRCR tokens by removing them from circulation. Burning reduces the total
+                            supply and can increase scarcity.</p>
+                        <p><strong>🔥 Important:</strong> Burned tokens cannot be recovered. </p>
+
+                    </div>
+                    <button class="close-button">×</button>
+                </div>
+            </div>
+        </div>
+
 
         <div class="transaction-section flip-enabled show-vesting" id="section-release">
             <div class="flip-inner">
