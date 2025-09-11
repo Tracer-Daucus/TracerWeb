@@ -32,6 +32,6 @@ export const CONTRACTS = {
     tracer: "0xcb991af4233D31af83708DbC45c45226D7833Ce9",
   },
   42161: {
-    tracer: "0x0000000000000000000000000000000000000000", // Replace with actual mainnet address
+    tracer: "0xd0e4fc5B430b0cAC0f59b7B8B66D40d0b3f64A6b", // Replace with actual mainnet address
   },
 };

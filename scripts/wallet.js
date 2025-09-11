@@ -2,6 +2,7 @@ import { appState } from "../core/state.js";
 import { getTokenContract, getVestingContract } from "./contracts.js";
 import { CHAINS, CONTRACTS } from "./config.js";
 import { updateUI, showMessage, updateNetworkUI } from "./ui.js";
+import { initProvider } from "../core/provider.js";
 
 export function detectNetwork(chainId) {
   const networkId = parseInt(chainId);
@@ -21,6 +22,55 @@ export function detectNetwork(chainId) {
     appState.setState("tracer.address", null);
     return false;
   }
+}
+
+// Universal connect function: try Safe first, then MetaMask
+async function connectUniversal() {
+  // 1) Try Safe (works only if loaded inside Safe{Wallet} iframe)
+  try {
+    const sdk = new window.SafeAppsSDK();
+    const safe = await sdk.safe.getInfo(); // throws if NOT inside Safe
+    const eip1193 = new window.SafeAppProvider(safe, sdk); // EIP-1193 provider
+    const provider = new ethers.BrowserProvider(eip1193);
+    const signer = await provider.getSigner();
+    const address = await signer.getAddress();
+    const chainId = Number(safe.chainId);
+
+    appState.setState("wallet.provider", provider);
+    appState.setState("wallet.signer", signer);
+    appState.setState("wallet.account", address);
+    appState.setState("wallet.network", { chainId }); // or your detectNetwork() → network object
+    appState.setState("wallet.connected", true);
+    appState.setState("wallet.kind", "safe");
+    appState.setState("wallet.safeInfo", safe);
+
+    // Optional UX: Safe submissions need approvals before execution
+    // showMessage("Connected via Safe. Transactions will be proposed to your Safe for approval.", "info");
+    return;
+  } catch (e) {
+    // Not running inside Safe → continue to MetaMask
+  }
+
+  // 2) Fallback to MetaMask (or any injected EIP-1193)
+  if (window.ethereum) {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = await provider.getSigner();
+    const address = await signer.getAddress();
+    const net = await provider.getNetwork();
+    const chainId = Number(net.chainId);
+
+    appState.setState("wallet.provider", provider);
+    appState.setState("wallet.signer", signer);
+    appState.setState("wallet.account", address);
+    appState.setState("wallet.network", { chainId }); // or your detectNetwork(chainId)
+    appState.setState("wallet.connected", true);
+    appState.setState("wallet.kind", "metamask");
+    appState.setState("wallet.safeInfo", null);
+    return;
+  }
+
+  throw new Error("No Safe or MetaMask provider found.");
 }
 
 export async function connectWallet() {

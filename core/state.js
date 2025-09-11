@@ -9,6 +9,8 @@ export class AppState {
         network: null,
         signer: null,
         provider: null,
+        kind: null, // "safe" | "metamask"
+        safeInfo: null, // { safeAddress, chainId, ... } when kind === "safe"
       },
       tracer: {
         contract: null,
