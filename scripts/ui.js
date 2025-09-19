@@ -37,7 +37,6 @@ export function updateUI() {
       "signAndSubmitPermitBtn",
       "checkVotingPowerBtn",
       "delegateVotingPowerBtn",
-      "circulationBtn",
       "burnBtn",
     ];
 
