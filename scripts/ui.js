@@ -46,7 +46,7 @@ export function updateUI() {
     document.getElementById("connectBtn").disabled = true;
 
     document.getElementById("deadlineStr").value = getLocalDeadline(120);
-    document.getElementById("circulationTime").value = getLocalDeadline(0);
+    //    document.getElementById("circulationTime").value = getLocalDeadline(0);
 
     const symbol = appState.getState("tracer.symbol");
     const decimals = appState.getState("tracer.decimals");
