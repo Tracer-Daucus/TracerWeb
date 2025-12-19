@@ -4,9 +4,117 @@ import { CHAINS, CONTRACTS } from "./config.js";
 import { updateUI, showMessage, updateNetworkUI } from "./ui.js";
 //import { initProvider } from "../core/provider.js";
 
+export function initNetworkSelector() {
+  const select = document.getElementById("networkSelector");
+  if (!select) return;
+
+  // Build options from config
+  select.innerHTML = "";
+  Object.keys(CHAINS)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .forEach((chainId) => {
+      const opt = document.createElement("option");
+      opt.value = String(chainId);
+      opt.textContent = CHAINS[chainId].name;
+      select.appendChild(opt);
+    });
+
+  // Default selection (localStorage -> fallback to Sepolia)
+  const saved = localStorage.getItem("selectedChainId");
+  const defaultChainId = saved ? Number(saved) : 421614;
+
+  // Set selected network in app state (UI source of truth)
+  setSelectedNetwork(defaultChainId, { shouldSwitchWallet: false });
+
+  select.value = String(defaultChainId);
+
+  select.addEventListener("change", async (e) => {
+    const chainId = Number(e.target.value);
+    await setSelectedNetwork(chainId, { shouldSwitchWallet: true });
+  });
+}
+
+export async function setSelectedNetwork(chainId, { shouldSwitchWallet } = {}) {
+  const id = Number(chainId);
+  const chain = CHAINS[id];
+  if (!chain) {
+    showMessage("Unsupported network selected.", "error");
+    return;
+  }
+
+  // Store the UI-selected network separately
+  appState.setState("ui.network", { ...chain, chainId: id });
+  appState.setState("tracer.address", CONTRACTS[id].tracer);
+  localStorage.setItem("selectedChainId", String(id));
+
+  updateNetworkUI();
+
+  // If connected via MetaMask, ask it to switch too
+  if (
+    shouldSwitchWallet &&
+    appState.getState("wallet.connected") &&
+    (appState.getState("wallet.kind") ?? "metamask") === "metamask"
+  ) {
+    try {
+      await switchMetaMaskNetwork(id);
+
+      // IMPORTANT: recreate provider after chain switch (ethers BrowserProvider caches network)
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      appState.setState("wallet.provider", provider);
+
+      const net = await provider.getNetwork();
+      detectNetwork(net.chainId.toString());
+
+      // Re-run your connection flow to rebuild signer/contracts for the new chain
+      await connectWallet();
+    } catch (err) {
+      showMessage(`Network switch failed: ${err.message ?? err}`, "error");
+    }
+  }
+}
+
+export async function switchMetaMaskNetwork(chainId) {
+  const chain = CHAINS[Number(chainId)];
+  if (!chain) throw new Error("Unknown chainId.");
+
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: chain.chainIdHex }],
+    });
+  } catch (err) {
+    // 4902 = chain not added to wallet
+    if (err?.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: chain.chainIdHex,
+            chainName: chain.name,
+            rpcUrls: [chain.rpcUrl],
+            nativeCurrency: chain.nativeCurrency,
+            blockExplorerUrls: [chain.blockExplorer],
+          },
+        ],
+      });
+
+      // then retry switch
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: chain.chainIdHex }],
+      });
+    } else {
+      throw err;
+    }
+  }
+}
+
 export function detectNetwork(chainId) {
   const networkId = parseInt(chainId);
-  const currentNetwork = CHAINS[networkId];
+  const currentNetwork = CHAINS[networkId]
+    ? { ...CHAINS[networkId], chainId: networkId }
+    : null;
   console.log(currentNetwork?.name);
 
   if (currentNetwork) {
@@ -80,14 +188,42 @@ export async function connectWallet() {
       return;
     }
 
+    // Keep your DOM-ready guard
     await new Promise((resolve) => {
-      if (document.readyState === "complete") {
-        resolve();
-      } else {
-        window.addEventListener("load", resolve, { once: true });
-      }
+      if (document.readyState === "complete") resolve();
+      else window.addEventListener("load", resolve, { once: true });
     });
 
+    // 1) Decide which chain the UI wants
+    const desiredChainId = Number(
+      appState.getState("ui.network")?.chainId ||
+        localStorage.getItem("selectedChainId") ||
+        421614 // default: Arbitrum Sepolia
+    );
+
+    if (!CHAINS[desiredChainId]) {
+      showMessage("Selected network is not supported by this dApp.", "error");
+      return;
+    }
+
+    // 2) If ui.network isn't initialized yet, initialize it WITHOUT switching wallet
+    // (prevents recursion because setSelectedNetwork() only switches wallet when wallet.connected === true)
+    if (appState.getState("ui.network")?.chainId == null) {
+      await setSelectedNetwork(desiredChainId, { shouldSwitchWallet: false });
+    }
+
+    // 3) Switch MetaMask to desired chain BEFORE making the ethers BrowserProvider
+    const currentChainHex = await window.ethereum.request({
+      method: "eth_chainId",
+      params: [],
+    });
+    const currentChainId = parseInt(currentChainHex, 16);
+
+    if (currentChainId !== desiredChainId) {
+      await switchMetaMaskNetwork(desiredChainId);
+    }
+
+    // 4) Request accounts (connect)
     const accounts = await window.ethereum.request({
       method: "eth_requestAccounts",
       params: [],
@@ -97,32 +233,45 @@ export async function connectWallet() {
       throw new Error("No accounts found. Please unlock MetaMask.");
     }
 
-    // REPLACE global variable assignments with appState:
+    // 5) Create provider AFTER the switch (BrowserProvider caches network)
     const provider = new ethers.BrowserProvider(window.ethereum);
     appState.setState("wallet.provider", provider);
 
-    await provider._detectNetwork();
-
     const network = await provider.getNetwork();
-    const isSupported = detectNetwork(network.chainId.toString());
+    const actualChainId = Number(network.chainId);
 
-    if (!isSupported) {
+    // Hard check: wallet must match UI selection
+    if (actualChainId !== desiredChainId) {
       showMessage(
-        `Unsupported network. Please switch to Arbitrum One or Arbitrum Sepolia.`,
+        `MetaMask is on chain ${actualChainId}, but UI selected ${desiredChainId}.`,
         "error"
       );
       updateNetworkUI();
       return;
     }
 
+    // 6) Update app state for chain + tracer address (keeps your existing logic)
+    const isSupported = detectNetwork(String(actualChainId));
+    if (!isSupported) {
+      showMessage(
+        "Unsupported network. Please switch to Arbitrum One or Arbitrum Sepolia.",
+        "error"
+      );
+      updateNetworkUI();
+      return;
+    }
+
+    // 7) Signer/account
     const signer = await provider.getSigner();
     const userAccount = await signer.getAddress();
 
     appState.setState("wallet.signer", signer);
     appState.setState("wallet.account", userAccount);
     appState.setState("wallet.connected", true);
+    appState.setState("wallet.kind", "metamask");
+    appState.setState("wallet.safeInfo", null);
 
-    // Initialize contracts
+    // 8) Contracts (unchanged)
     const tracerContract = getTokenContract(
       appState.getState("tracer.address"),
       signer
@@ -168,7 +317,7 @@ export async function connectWallet() {
       showMessage("Connection cancelled by user", "error");
     } else if (error.code === -32002) {
       showMessage("Connection request already pending in MetaMask", "error");
-    } else if (error.message.includes("origin")) {
+    } else if (error.message?.includes("origin")) {
       showMessage(
         "MetaMask origin error. Try refreshing the page or using a local server.",
         "error"
@@ -261,3 +410,7 @@ export async function addToMetaMask() {
     showMessage(`Failed to add token: ${error.message} `, "error");
   }
 }
+
+window.addEventListener("load", () => {
+  initNetworkSelector();
+});

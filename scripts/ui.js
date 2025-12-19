@@ -161,37 +161,41 @@ export function updateUI() {
 }
 
 export function updateNetworkUI() {
-  if (appState.getState("wallet.network")) {
-    document.getElementById("network").textContent =
-      appState.getState("wallet.network").name;
-    document.getElementById("tracerAddress").innerHTML = explorerLink(
-      "address",
-      appState.getState("tracer.address")
-    );
+  const net =
+    appState.getState("ui.network") || appState.getState("wallet.network");
+  if (!net) return;
 
-    // Show/hide mainnet warning
-    const isMainnet =
-      appState.getState("wallet.network").name === "Arbitrum One";
-    let warning = document.getElementById("mainnetWarning");
+  const select = document.getElementById("networkSelector");
+  if (select && select.tagName === "SELECT" && net.chainId != null) {
+    select.value = String(net.chainId);
+  }
 
-    if (
-      isMainnet &&
-      appState.getState("tracer.address") ===
-        "0x0000000000000000000000000000000000000000"
-    ) {
-      if (!warning) {
-        warning = document.createElement("div");
-        warning.id = "mainnetWarning";
-        warning.className = "error";
-        warning.innerHTML =
-          "<strong>⚠️ Mainnet Warning:</strong> Please update the mainnet contract address in the code before using on Arbitrum One.";
-        document
-          .querySelector(".container")
-          .insertBefore(warning, document.getElementById("status"));
-      }
-    } else if (warning) {
-      warning.remove();
+  document.getElementById("tracerAddress").innerHTML = explorerLink(
+    "address",
+    appState.getState("tracer.address")
+  );
+
+  // Keep your mainnet warning logic the same, but check net.name
+  const isMainnet = net.name === "Arbitrum One";
+  let warning = document.getElementById("mainnetWarning");
+
+  if (
+    isMainnet &&
+    appState.getState("tracer.address") ===
+      "0x0000000000000000000000000000000000000000"
+  ) {
+    if (!warning) {
+      warning = document.createElement("div");
+      warning.id = "mainnetWarning";
+      warning.className = "error";
+      warning.innerHTML =
+        "<strong>⚠️ Mainnet Warning:</strong> Please update the mainnet contract address in the code before using on Arbitrum One.";
+      document
+        .querySelector(".container")
+        .insertBefore(warning, document.getElementById("status"));
     }
+  } else if (warning) {
+    warning.remove();
   }
 }
 
